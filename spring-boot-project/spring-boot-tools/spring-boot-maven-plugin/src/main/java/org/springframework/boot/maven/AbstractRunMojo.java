@@ -213,7 +213,8 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	 * @see #logDisabledFork()
 	 */
 	protected boolean enableForkByDefault() {
-		return hasAgent() || hasJvmArgs() || hasEnvVariables() || hasWorkingDirectorySet();
+		return hasAgent() || hasJvmArgs() || hasEnvVariables()
+				|| hasWorkingDirectorySet();
 	}
 
 	private boolean hasAgent() {
@@ -221,13 +222,14 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	}
 
 	private boolean hasJvmArgs() {
-		return (this.jvmArguments != null && !this.jvmArguments.isEmpty()) ||
-				(this.systemPropertyVariables != null
+		return (this.jvmArguments != null && !this.jvmArguments.isEmpty())
+				|| (this.systemPropertyVariables != null
 						&& !this.systemPropertyVariables.isEmpty());
 	}
 
 	private boolean hasEnvVariables() {
-		return (this.environmentVariables != null && !this.environmentVariables.isEmpty());
+		return (this.environmentVariables != null
+				&& !this.environmentVariables.isEmpty());
 	}
 
 	private boolean hasWorkingDirectorySet() {
@@ -254,17 +256,20 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	 * @see #enableForkByDefault()
 	 */
 	protected void logDisabledFork() {
-		if (hasAgent()) {
-			getLog().warn("Fork mode disabled, ignoring agent");
-		}
-		if (hasJvmArgs()) {
-			RunArguments runArguments = resolveJvmArguments();
-			getLog().warn("Fork mode disabled, ignoring JVM argument(s) ["
-					+ Arrays.stream(runArguments.asArray()).collect(
-							Collectors.joining(" ")) + "]");
-		}
-		if (hasWorkingDirectorySet()) {
-			getLog().warn("Fork mode disabled, ignoring working directory configuration");
+		if (getLog().isWarnEnabled()) {
+			if (hasAgent()) {
+				getLog().warn("Fork mode disabled, ignoring agent");
+			}
+			if (hasJvmArgs()) {
+				RunArguments runArguments = resolveJvmArguments();
+				getLog().warn("Fork mode disabled, ignoring JVM argument(s) [" + Arrays
+						.stream(runArguments.asArray()).collect(Collectors.joining(" "))
+						+ "]");
+			}
+			if (hasWorkingDirectorySet()) {
+				getLog().warn(
+						"Fork mode disabled, ignoring working directory configuration");
+			}
 		}
 	}
 
@@ -313,7 +318,7 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 
 	/**
 	 * Resolve the environment variables to use.
-	 * @return a {@link EnvVariables} defining the environment variables
+	 * @return an {@link EnvVariables} defining the environment variables
 	 */
 	protected EnvVariables resolveEnvVariables() {
 		return new EnvVariables(this.environmentVariables);
@@ -336,12 +341,10 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	 * @return a {@link RunArguments} defining the JVM arguments
 	 */
 	protected RunArguments resolveJvmArguments() {
-		final StringBuilder stringBuilder = new StringBuilder();
+		StringBuilder stringBuilder = new StringBuilder();
 		if (this.systemPropertyVariables != null) {
-			stringBuilder.append(this.systemPropertyVariables
-					.entrySet()
-					.stream()
-					.map(e -> SystemPropertyFormatter.format(e.getKey(), e.getValue()))
+			stringBuilder.append(this.systemPropertyVariables.entrySet().stream()
+					.map((e) -> SystemPropertyFormatter.format(e.getKey(), e.getValue()))
 					.collect(Collectors.joining(" ")));
 		}
 		if (this.jvmArguments != null) {
@@ -358,7 +361,9 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 
 	private void addAgents(List<String> args) {
 		if (this.agent != null) {
-			getLog().info("Attaching agents: " + Arrays.asList(this.agent));
+			if (getLog().isInfoEnabled()) {
+				getLog().info("Attaching agents: " + Arrays.asList(this.agent));
+			}
 			for (File agent : this.agent) {
 				args.add("-javaagent:" + agent);
 			}
@@ -390,7 +395,9 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 						.append((classpath.length() > 0 ? File.pathSeparator : "")
 								+ new File(ele.toURI()));
 			}
-			getLog().debug("Classpath for forked process: " + classpath);
+			if (getLog().isDebugEnabled()) {
+				getLog().debug("Classpath for forked process: " + classpath);
+			}
 			args.add("-cp");
 			args.add(classpath.toString());
 		}
@@ -456,8 +463,8 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 
 	private void addDependencies(List<URL> urls)
 			throws MalformedURLException, MojoExecutionException {
-		FilterArtifacts filters = this.useTestClasspath ? getFilters()
-				: getFilters(new TestArtifactFilter());
+		FilterArtifacts filters = (this.useTestClasspath ? getFilters()
+				: getFilters(new TestArtifactFilter()));
 		Set<Artifact> artifacts = filterDependencies(this.project.getArtifacts(),
 				filters);
 		for (Artifact artifact : artifacts) {
@@ -468,11 +475,10 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	}
 
 	private void logArguments(String message, String[] args) {
-		StringBuilder sb = new StringBuilder(message);
-		for (String arg : args) {
-			sb.append(arg).append(" ");
+		if (getLog().isDebugEnabled()) {
+			getLog().debug(
+					Arrays.stream(args).collect(Collectors.joining(" ", message, "")));
 		}
-		getLog().debug(sb.toString().trim());
 	}
 
 	private static class TestArtifactFilter extends AbstractArtifactFeatureFilter {
@@ -505,7 +511,7 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 		public void uncaughtException(Thread thread, Throwable ex) {
 			if (!(ex instanceof ThreadDeath)) {
 				synchronized (this.monitor) {
-					this.exception = (this.exception == null ? ex : this.exception);
+					this.exception = (this.exception != null ? this.exception : ex);
 				}
 				getLog().warn(ex);
 			}
@@ -569,15 +575,16 @@ public abstract class AbstractRunMojo extends AbstractDependencyFilterMojo {
 	 */
 	static class SystemPropertyFormatter {
 
-		public static String format(Object key, Object value) {
+		public static String format(String key, String value) {
 			if (key == null) {
 				return "";
 			}
-			if (value == null || String.valueOf(value).isEmpty()) {
+			if (value == null || value.isEmpty()) {
 				return String.format("-D%s", key);
 			}
 			return String.format("-D%s=\"%s\"", key, value);
 		}
+
 	}
 
 }

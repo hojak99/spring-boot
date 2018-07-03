@@ -17,6 +17,7 @@
 package org.springframework.boot.actuate.metrics.web.reactive.client;
 
 import java.io.IOException;
+import java.util.regex.Pattern;
 
 import io.micrometer.core.instrument.Tag;
 
@@ -34,18 +35,24 @@ import org.springframework.web.reactive.function.client.WebClient;
  */
 public final class WebClientExchangeTags {
 
-	private static final String URI_TEMPLATE_ATTRIBUTE = WebClient.class.getName() + ".uriTemplate";
+	private static final String URI_TEMPLATE_ATTRIBUTE = WebClient.class.getName()
+			+ ".uriTemplate";
 
 	private static final Tag IO_ERROR = Tag.of("status", "IO_ERROR");
 
 	private static final Tag CLIENT_ERROR = Tag.of("status", "CLIENT_ERROR");
 
+	private static final Pattern PATTERN_BEFORE_PATH = Pattern
+			.compile("^https?://[^/]+/");
+
+	private static final Tag CLIENT_NAME_NONE = Tag.of("clientName", "none");
+
 	private WebClientExchangeTags() {
 	}
 
 	/**
-	 * Creates a {@code method} {@code Tag} for the
-	 * {@link ClientHttpRequest#getMethod() method} of the given {@code request}.
+	 * Creates a {@code method} {@code Tag} for the {@link ClientHttpRequest#getMethod()
+	 * method} of the given {@code request}.
 	 * @param request the request
 	 * @return the method tag
 	 */
@@ -65,8 +72,8 @@ public final class WebClientExchangeTags {
 	}
 
 	private static String extractPath(String url) {
-		String path = url.replaceFirst("^https?://[^/]+/", "");
-		return path.startsWith("/") ? path : "/" + path;
+		String path = PATTERN_BEFORE_PATH.matcher(url).replaceFirst("");
+		return (path.startsWith("/") ? path : "/" + path);
 	}
 
 	/**
@@ -76,30 +83,30 @@ public final class WebClientExchangeTags {
 	 * @return the status tag
 	 */
 	public static Tag status(ClientResponse response) {
-		return Tag.of("status", response.statusCode().toString());
+		return Tag.of("status", String.valueOf(response.statusCode().value()));
 	}
 
 	/**
-	 * Creates a {@code status} {@code Tag} derived from the
-	 * exception thrown by the client.
+	 * Creates a {@code status} {@code Tag} derived from the exception thrown by the
+	 * client.
 	 * @param throwable the exception
 	 * @return the status tag
 	 */
 	public static Tag status(Throwable throwable) {
-		return throwable instanceof IOException ? IO_ERROR : CLIENT_ERROR;
+		return (throwable instanceof IOException ? IO_ERROR : CLIENT_ERROR);
 	}
 
 	/**
-	 * Create a {@code clientName} {@code Tag} derived from
-	 * the {@link java.net.URI#getHost host}
-	 * of the {@link ClientRequest#url() URL} of the given {@code request}.
+	 * Create a {@code clientName} {@code Tag} derived from the
+	 * {@link java.net.URI#getHost host} of the {@link ClientRequest#url() URL} of the
+	 * given {@code request}.
 	 * @param request the request
 	 * @return the clientName tag
 	 */
 	public static Tag clientName(ClientRequest request) {
 		String host = request.url().getHost();
 		if (host == null) {
-			host = "none";
+			return CLIENT_NAME_NONE;
 		}
 		return Tag.of("clientName", host);
 	}

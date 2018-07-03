@@ -431,7 +431,7 @@ following example:
 		@Override
 		protected void configure(HttpSecurity http) throws Exception {
 			http.requestMatcher(EndpointRequest.toAnyEndpoint()).authorizeRequests()
-				.anyRequest().permitAll()
+				.anyRequest().permitAll();
 		}
 
 	}
@@ -674,7 +674,7 @@ authorization checks using its `isUserInRole(String)` method.
 ==== Servlet endpoints
 A `Servlet` can be exposed as an endpoint by implementing a class annotated with
 `@ServletEndpoint` that also implements `Supplier<EndpointServlet>`. Servlet endpoints
-provide deeper integration with the Servlet container but at the expose of portability.
+provide deeper integration with the Servlet container but at the expense of portability.
 They are intended to be used to expose an existing `Servlet` as an endpoint. For new
 endpoints, the `@Endpoint` and `@WebEndpoint` annotations should be preferred whenever
 possible.
@@ -725,14 +725,19 @@ NOTE: If you have secured your application and wish to use `always`, your securi
 configuration must permit access to the health endpoint for both authenticated and
 unauthenticated users.
 
-Health information is collected from all
-{sc-spring-boot-actuator}/health/HealthIndicator.{sc-ext}[`HealthIndicator`] beans
+Health information is collected from the content of a
+{sc-spring-boot-actuator}/health/HealthIndicatorRegistry.{sc-ext}[
+`HealthIndicatorRegistry`] (by default all
+{sc-spring-boot-actuator}/health/HealthIndicator.{sc-ext}[`HealthIndicator`] instances
 defined in your `ApplicationContext`. Spring Boot includes a number of auto-configured
-`HealthIndicators`, and you can also write your own. By default, the final system state
-is derived by the `HealthAggregator`, which sorts the statuses from each
-`HealthIndicator` based on an ordered list of statuses. The first status in the sorted
-list is used as the overall health status. If no `HealthIndicator` returns a status that
-is known to the `HealthAggregator`, an `UNKNOWN` status is used.
+`HealthIndicators` and you can also write your own. By default, the final system state is
+derived by the `HealthAggregator` which sorts the statuses from each `HealthIndicator`
+based on an ordered list of statuses. The first status in the sorted list is used as the
+overall health status. If no `HealthIndicator` returns a status that is known to the
+`HealthAggregator`, an `UNKNOWN` status is used.
+
+TIP: The `HealthIndicatorRegistry` can be used to register and unregister health
+indicators at runtime.
 
 
 
@@ -872,10 +877,17 @@ The following table shows the default status mappings for the built-in statuses:
 ==== Reactive Health Indicators
 For reactive applications, such as those using Spring WebFlux, `ReactiveHealthIndicator`
 provides a non-blocking contract for getting application health. Similar to a traditional
-`HealthIndicator`, health information is collected from all
-{sc-spring-boot-actuator}/health/ReactiveHealthIndicator.{sc-ext}[`ReactiveHealthIndicator`]
-beans defined in your `ApplicationContext`. Regular `HealthIndicator` beans that do not
-check against a reactive API are included and executed on the elastic scheduler.
+`HealthIndicator`, health information is collected from the content of a
+{sc-spring-boot-actuator}/health/ReactiveHealthIndicatorRegistry.{sc-ext}[
+`ReactiveHealthIndicatorRegistry`] (by default all
+{sc-spring-boot-actuator}/health/HealthIndicator.{sc-ext}[`HealthIndicator`] and
+{sc-spring-boot-actuator}/health/ReactiveHealthIndicator.{sc-ext}[
+`ReactiveHealthIndicator`] instances defined in your `ApplicationContext`. Regular
+`HealthIndicator` that do not check against a reactive API are executed on the elastic
+scheduler.
+
+TIP: In a reactive application, The `ReactiveHealthIndicatorRegistry` can be used to
+register and unregister health indicators at runtime.
 
 To provide custom health information from a reactive API, you can register Spring beans
 that implement the
@@ -1482,10 +1494,17 @@ server] to use can be provided using:
 ==== JMX
 Micrometer provides a hierarchical mapping to
 {micrometer-registry-documentation}/jmx[JMX], primarily as a cheap and portable way to
-view metrics locally. Micrometer provides a default `HierarchicalNameMapper` that governs
-how a dimensional meter id is
-{micrometer-registry-documentation}/jmx#_hierarchical_name_mapping[mapped to flat
-hierarchical names].
+view metrics locally.By default, metrics are exported to the `metrics` JMX domain. The
+domain to use can be provided provided using:
+
+[source,properties,indent=0]
+----
+	management.metrics.export.jmx.domain=com.example.app.metrics
+----
+
+Micrometer provides a default `HierarchicalNameMapper` that governs how a dimensional
+meter id is {micrometer-registry-documentation}/jmx#_hierarchical_name_mapping[mapped to
+flat hierarchical names].
 
 TIP: To take control over this behaviour, define your `JmxMeterRegistry` and supply your
 own `HierarchicalNameMapper`. An auto-configured `JmxConfig` and `Clock` beans are
@@ -1619,7 +1638,7 @@ environment that forwards metrics data to the Wavefront API host:
 
 [source,properties,indent=0]
 ----
-	management.metrics.export.uri=proxy://localhost:2878
+	management.metrics.export.wavefront.uri=proxy://localhost:2878
 ----
 
 TIP: If publishing metrics to a Wavefront proxy (as described in
@@ -1797,7 +1816,7 @@ Auto-configuration enables the instrumentation of all available Hibernate
 Metrics are also tagged by the name of the `EntityManagerFactory` that is derived from
 the bean name.
 
-To enable statistics, the standardJPA property `hibernate.generate_statistics` must be
+To enable statistics, the standard JPA property `hibernate.generate_statistics` must be
 set to `true`. You can enable that on the auto-configured `EntityManagerFactory` as shown
 in the following example:
 
@@ -1845,6 +1864,25 @@ all meter IDs beginning with `com.example`, you can do the following:
 ----
 include::{code-examples}/actuate/metrics/MetricsFilterBeanExample.java[tag=configuration]
 ----
+
+[[production-ready-metrics-common-tags]]
+==== Common tags
+Common tags are generally used for dimensional drill-down on the operating environment like
+host, instance, region, stack, etc. Commons tags are applied to all meters and can be
+configured as shown in the following example:
+
+[source,properties,indent=0]
+----
+	management.metrics.tags.region=us-east-1
+	management.metrics.tags.stack=prod
+----
+
+The example above adds `region` and `stack` tags to all meters with a value of
+`us-east-1` and `prod` respectively.
+
+NOTE: The order of common tags is important if you are using Graphite. As the order of
+common tags cannot be guaranteed using this approach, Graphite users are advised to define
+a custom `MeterFilter` instead.
 
 
 

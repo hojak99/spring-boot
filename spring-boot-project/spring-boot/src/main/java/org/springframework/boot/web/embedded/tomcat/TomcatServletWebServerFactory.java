@@ -354,6 +354,10 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 	private void configureSession(Context context) {
 		long sessionTimeout = getSessionTimeoutInMinutes();
 		context.setSessionTimeout((int) sessionTimeout);
+		Boolean httpOnly = getSession().getCookie().getHttpOnly();
+		if (httpOnly != null) {
+			context.setUseHttpOnly(httpOnly);
+		}
 		if (getSession().isPersistent()) {
 			Manager manager = context.getManager();
 			if (manager == null) {
@@ -674,8 +678,8 @@ public class TomcatServletWebServerFactory extends AbstractServletWebServerFacto
 
 		private void addResourceJars(List<URL> resourceJarUrls) {
 			for (URL url : resourceJarUrls) {
-				String file = getDecodedFile(url);
-				if (file.endsWith(".jar") || file.endsWith(".jar!/")) {
+				String path = url.getPath();
+				if (path.endsWith(".jar") || path.endsWith(".jar!/")) {
 					String jar = url.toString();
 					if (!jar.startsWith("jar:")) {
 						// A jar file in the file system. Convert to Jar URL.

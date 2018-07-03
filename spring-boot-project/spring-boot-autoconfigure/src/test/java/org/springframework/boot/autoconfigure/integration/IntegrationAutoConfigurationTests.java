@@ -80,9 +80,21 @@ public class IntegrationAutoConfigurationTests {
 				.withUserConfiguration(CustomIntegrationComponentScanConfiguration.class)
 				.run((context) -> {
 					assertThat(context).hasSingleBean(TestGateway.class);
-					assertThat(context).doesNotHaveBean(
-							IntegrationComponentScanConfiguration.class);
+					assertThat(context)
+							.doesNotHaveBean(IntegrationComponentScanConfiguration.class);
 				});
+	}
+
+	@Test
+	public void noMBeanServerAvailable() {
+		ApplicationContextRunner contextRunnerWithoutJmx = new ApplicationContextRunner()
+				.withConfiguration(
+						AutoConfigurations.of(IntegrationAutoConfiguration.class));
+		contextRunnerWithoutJmx.run((context) -> {
+			assertThat(context).hasSingleBean(TestGateway.class);
+			assertThat(context)
+					.hasSingleBean(IntegrationComponentScanConfiguration.class);
+		});
 	}
 
 	@Test
@@ -196,7 +208,7 @@ public class IntegrationAutoConfigurationTests {
 					assertThat(properties.getJdbc().getInitializeSchema())
 							.isEqualTo(DataSourceInitializationMode.EMBEDDED);
 					JdbcOperations jdbc = context.getBean(JdbcOperations.class);
-					jdbc.queryForList("select * from INT_MESSAGE").isEmpty();
+					assertThat(jdbc.queryForList("select * from INT_MESSAGE")).isEmpty();
 				});
 	}
 

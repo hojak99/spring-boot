@@ -37,6 +37,12 @@ public final class WebFluxTags {
 
 	private static final Tag URI_REDIRECTION = Tag.of("uri", "REDIRECTION");
 
+	private static final Tag URI_ROOT = Tag.of("uri", "root");
+
+	private static final Tag URI_UNKNOWN = Tag.of("uri", "UNKNOWN");
+
+	private static final Tag EXCEPTION_NONE = Tag.of("exception", "None");
+
 	private WebFluxTags() {
 	}
 
@@ -49,7 +55,7 @@ public final class WebFluxTags {
 	 * @return the method tag whose value is a capitalized method (e.g. GET).
 	 */
 	public static Tag method(ServerWebExchange exchange) {
-		return Tag.of("method", exchange.getRequest().getMethod().toString());
+		return Tag.of("method", exchange.getRequest().getMethodValue());
 	}
 
 	/**
@@ -63,7 +69,7 @@ public final class WebFluxTags {
 		if (status == null) {
 			status = HttpStatus.OK;
 		}
-		return Tag.of("status", status.toString());
+		return Tag.of("status", String.valueOf(status.value()));
 	}
 
 	/**
@@ -87,9 +93,12 @@ public final class WebFluxTags {
 				return URI_NOT_FOUND;
 			}
 			String path = exchange.getRequest().getPath().value();
-			return Tag.of("uri", path.isEmpty() ? "root" : path);
+			if (path.isEmpty()) {
+				return URI_ROOT;
+			}
+			return Tag.of("uri", path);
 		}
-		return Tag.of("uri", "UNKNOWN");
+		return URI_UNKNOWN;
 	}
 
 	/**
@@ -102,7 +111,7 @@ public final class WebFluxTags {
 		if (exception != null) {
 			return Tag.of("exception", exception.getClass().getSimpleName());
 		}
-		return Tag.of("exception", "none");
+		return EXCEPTION_NONE;
 	}
 
 }

@@ -40,6 +40,8 @@ public final class WebMvcTags {
 
 	private static final Tag URI_REDIRECTION = Tag.of("uri", "REDIRECTION");
 
+	private static final Tag URI_ROOT = Tag.of("uri", "root");
+
 	private static final Tag URI_UNKNOWN = Tag.of("uri", "UNKNOWN");
 
 	private static final Tag EXCEPTION_NONE = Tag.of("exception", "None");
@@ -58,7 +60,7 @@ public final class WebMvcTags {
 	 * @return the method tag whose value is a capitalized method (e.g. GET).
 	 */
 	public static Tag method(HttpServletRequest request) {
-		return (request == null ? METHOD_UNKNOWN : Tag.of("method", request.getMethod()));
+		return (request != null ? Tag.of("method", request.getMethod()) : METHOD_UNKNOWN);
 	}
 
 	/**
@@ -67,15 +69,17 @@ public final class WebMvcTags {
 	 * @return the status tag derived from the status of the response
 	 */
 	public static Tag status(HttpServletResponse response) {
-		return (response == null ? STATUS_UNKNOWN :
-				Tag.of("status", Integer.toString(response.getStatus())));
+		return (response != null
+				? Tag.of("status", Integer.toString(response.getStatus()))
+				: STATUS_UNKNOWN);
 	}
 
 	/**
 	 * Creates a {@code uri} tag based on the URI of the given {@code request}. Uses the
 	 * {@link HandlerMapping#BEST_MATCHING_PATTERN_ATTRIBUTE} best matching pattern if
-	 * available, falling back to the request's {@link HttpServletRequest#getPathInfo()
-	 * path info} if necessary.
+	 * available. Falling back to {@code REDIRECTION} for 3xx responses, {@code NOT_FOUND}
+	 * for 404 responses, {@code root} for requests with no path info, and {@code UNKNOWN}
+	 * for all other requests.
 	 * @param request the request
 	 * @param response the response
 	 * @return the uri tag derived from the request
@@ -96,7 +100,9 @@ public final class WebMvcTags {
 				}
 			}
 			String pathInfo = getPathInfo(request);
-			return Tag.of("uri", pathInfo.isEmpty() ? "root" : pathInfo);
+			if (pathInfo.isEmpty()) {
+				return URI_ROOT;
+			}
 		}
 		return URI_UNKNOWN;
 	}
